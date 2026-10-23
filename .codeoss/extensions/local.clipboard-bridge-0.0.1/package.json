@@ -1,0 +1,24 @@
+{
+	"name": "clipboard-bridge",
+	"displayName": "Clipboard Bridge",
+	"publisher": "local",
+	"version": "0.0.1",
+	"engines": {
+		"vscode": "^1.80.0"
+	},
+	"activationEvents": [
+		"onStartupFinished"
+	],
+	"main": "./out/extension.js",
+	"devDependencies": {
+		"@types/vscode": "^1.80.0",
+		"@types/node": "^18.0.0",
+		"typescript": "^5.0.0",
+		"@vscode/vsce": "^2.22.0"
+	},
+	"__metadata": {
+		"installedTimestamp": 1792692989056,
+		"targetPlatform": "undefined",
+		"size": 6365
+	}
+}

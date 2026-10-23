@@ -1,0 +1,19 @@
+[
+    {
+        "identifier": {
+            "id": "local.clipboard-bridge"
+        },
+        "version": "0.0.1",
+        "location": {
+            "$mid": 1,
+            "path": "/home/octavian983/.codeoss/extensions/local.clipboard-bridge-0.0.1",
+            "scheme": "file"
+        },
+        "relativeLocation": "local.clipboard-bridge-0.0.1",
+        "metadata": {
+            "installedTimestamp": 1792692989039,
+            "pinned": true,
+            "source": "vsix"
+        }
+    }
+]

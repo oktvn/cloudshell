@@ -1,0 +1,100 @@
+#!/bin/bash
+
+# Exit on undefined variables and pipe failures
+set -uo pipefail
+
+if [ $# -lt 2 ]; then
+    echo "Usage: $0 <directory> <pattern1> [pattern2] ... [--exclude <exclude1> <exclude2> ...]"
+    echo "Example: $0 . '*.js' '*.py' --exclude '*/build/*'"
+    exit 1
+fi
+
+directory="$1"
+shift  # Remove directory argument, leaving only patterns
+
+# Default exclusion patterns
+DEFAULT_EXCLUDES=(
+    "*/.git/*"
+    "*/node_modules/*"
+    "*/__pycache__/*"
+    "*/build/*"
+    "*/dist/*"
+    "*/.venv/*"
+    "*/venv/*"
+)
+
+# Separate include and exclude patterns
+INCLUDE_PATTERNS=()
+EXCLUDE_PATTERNS=("${DEFAULT_EXCLUDES[@]}")
+mode="include"
+
+for arg in "$@"; do
+    if [ "$arg" = "--exclude" ]; then
+        mode="exclude"
+    elif [ "$mode" = "include" ]; then
+        INCLUDE_PATTERNS+=("$arg")
+    else
+        EXCLUDE_PATTERNS+=("$arg")
+    fi
+done
+
+# Build the find command arguments safely using an array
+FIND_ARGS=()
+
+for exclude in "${EXCLUDE_PATTERNS[@]}"; do
+    prune_path="${exclude%/\*}"
+    prune_path="${prune_path%/}"
+    FIND_ARGS+=( "-path" "$prune_path" "-prune" "-o" )
+done
+
+FIND_ARGS+=( "-type" "f" )
+
+if [ ${#INCLUDE_PATTERNS[@]} -gt 0 ]; then
+    FIND_ARGS+=( "(" )
+    first=true
+    for include in "${INCLUDE_PATTERNS[@]}"; do
+        if [ "$first" = true ]; then
+            first=false
+        else
+            FIND_ARGS+=( "-o" )
+        fi
+        FIND_ARGS+=( "-path" "$include" )
+    done
+    FIND_ARGS+=( ")" )
+fi
+
+FIND_ARGS+=( "-print" )
+
+total_lines=0
+
+# Process matching files
+while IFS= read -r file; do
+    if [ -r "$file" ]; then
+        # 1. Use awk to filter content and store it entirely in memory
+        filtered_content=$(awk '
+            /@@ IGNORE START @@/ { skip=1 }
+            !skip { print }
+            /@@ IGNORE END @@/ { skip=0 }
+        ' "$file")
+        
+        # 2. Safely count the lines of the in-memory string
+        if [ -n "$filtered_content" ]; then
+            # printf adds a reliable trailing newline so wc -l counts correctly
+            file_lines=$(printf "%s\n" "$filtered_content" | wc -l)
+        else
+            file_lines=0
+        fi
+        
+        # 3. Output the result
+        echo "$file:"
+        echo "<code>"
+        
+        # Use printf instead of echo to prevent accidental execution of backslashes or flags (like -e) in source code
+        [ -n "$filtered_content" ] && printf "%s\n" "$filtered_content"
+        
+        echo -e "\n</code>\n"
+        ((total_lines += file_lines))
+    fi
+done < <(find "$directory" "${FIND_ARGS[@]}" 2>/dev/null)
+
+echo "Total lines copied: $total_lines" >&2

@@ -1,0 +1,38 @@
+#!/usr/bin/env bash
+#
+# clean-docker-cache.sh
+# Safely clears locked BuildKit cache and orphaned storage layers in Linux/Cloud Shell environments.
+
+set -e
+
+echo "=========================================="
+echo " 1/4  Stopping Docker service..."
+echo "=========================================="
+# Fallback to pkill if the service script hangs
+sudo service docker stop || sudo pkill -9 dockerd
+
+echo "=========================================="
+echo " 2/4  Removing trapped BuildKit locks..."
+echo "=========================================="
+# Removing the session DB breaks stale (*) locks
+sudo rm -rf /var/lib/docker/buildkit/*
+
+echo "=========================================="
+echo " 3/4  Starting Docker service..."
+echo "=========================================="
+sudo service docker start
+
+# Give the daemon 2 seconds to initialize its socket
+sleep 2
+
+echo "=========================================="
+echo " 4/4  Pruning unlocked cache layers..."
+echo "=========================================="
+# Now that locks are broken, garbage-collect the remaining overlay2 layers
+docker builder prune -a -f
+docker system prune -a --volumes -f
+
+echo "=========================================="
+echo " Done! Current Docker disk usage:"
+echo "=========================================="
+docker system df
